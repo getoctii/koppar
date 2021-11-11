@@ -35,6 +35,8 @@ model Relationship {
   user        User             @relation("OutgoingRelationship", fields: [userID], references: [id])
   recipientID String
   recipient   User             @relation("IncomingRelationship", fields: [recipientID], references: [id])
+
+  @@unique([userID, recipientID])
 }
 
 model Keychain {

@@ -9,6 +9,8 @@ import { loginUser } from 'App/Validators/LoginUserValidator'
 import { SigningPair } from '@innatical/inncryption'
 import { publicKeychain } from 'App/Validators/KeychainValidator'
 import { z } from 'zod'
+import { putRelationship } from 'App/Validators/PutRelationshipValidator'
+import { isBlocked } from 'App/Util/Relationship'
 
 export default class UsersController {
   public async me(ctx: HttpContextContract) {
@@ -26,6 +28,118 @@ export default class UsersController {
       flags: ctx.user!.flags,
       keychain: ctx.user!.keychain!,
     })
+  }
+
+  public async myRelationships(ctx: HttpContextContract) {
+    const user = await db.user.findUnique({
+      where: {
+        id: ctx.user!.id,
+      },
+      include: {
+        incomingRelationships: true,
+        outgoingRelationships: true,
+      },
+    })
+
+    const outgoing = user!.outgoingRelationships
+      .filter((r) => r.type === 'OUTGOING')
+      .map((friend) => friend.recipientID)
+    const incoming = user!.incomingRelationships
+      .filter((r) => r.type === 'OUTGOING')
+      .map((friend) => friend.userID)
+
+    return ctx.response.ok({
+      friends: outgoing.filter((friend) => incoming.includes(friend)),
+      outgoing: outgoing.filter((friend) => !incoming.includes(friend)),
+      incoming: incoming.filter((friend) => !outgoing.includes(friend)),
+      blocked: user!.outgoingRelationships
+        .filter((r) => r.type === 'BLOCKED')
+        .map((r) => r.recipientID),
+    })
+  }
+
+  public async putRelationship(ctx: HttpContextContract) {
+    const input = putRelationship.safeParse(ctx.request.body())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+
+    const id = ctx.request.param('id')
+
+    const recipient = await db.user.findUnique({
+      where: {
+        id,
+      },
+    })
+
+    if (!recipient) return ctx.response.notFound({ error: 'UserNotFound' })
+
+    if (input.data.type === 'OUTGOING' && (await isBlocked(ctx.user!.id, recipient.id)))
+      return ctx.response.notFound({ error: 'UserNotFound' })
+
+    if (input.data.type === 'BLOCKED')
+      await db.relationship.deleteMany({
+        where: {
+          userID: recipient.id,
+          recipientID: ctx.user!.id,
+          type: {
+            not: 'BLOCKED',
+          },
+        },
+      })
+
+    await db.relationship.upsert({
+      where: {
+        userID_recipientID: {
+          userID: ctx.user!.id,
+          recipientID: recipient.id,
+        },
+      },
+      create: {
+        type: input.data.type,
+        user: {
+          connect: {
+            id: ctx.user!.id,
+          },
+        },
+        recipient: {
+          connect: {
+            id,
+          },
+        },
+      },
+      update: {
+        type: input.data.type,
+      },
+    })
+
+    return ctx.response.ok(undefined)
+  }
+
+  public async deleteRelationship(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+    const recipient = await db.user.findUnique({
+      where: {
+        id,
+      },
+    })
+
+    if (!recipient) return ctx.response.notFound({ error: 'UserNotFound' })
+
+    await db.relationship.deleteMany({
+      where: {
+        userID: ctx.user!.id,
+        recipientID: recipient?.id,
+      },
+    })
+
+    await db.relationship.deleteMany({
+      where: {
+        userID: recipient?.id,
+        recipientID: ctx.user!.id,
+        type: 'OUTGOING',
+      },
+    })
+
+    return ctx.response.ok(undefined)
   }
 
   public async get(ctx: HttpContextContract) {
