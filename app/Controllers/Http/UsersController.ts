@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto'
 import { loginUser } from 'App/Validators/LoginUserValidator'
 import { SigningPair } from '@innatical/inncryption'
 import { publicKeychain } from 'App/Validators/KeychainValidator'
-import z from 'zod'
+import { z } from 'zod'
 
 export default class UsersController {
   public async me(ctx: HttpContextContract) {

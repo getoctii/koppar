@@ -20,7 +20,7 @@ const corsConfig: CorsConfig = {
   | you can define a function to enable/disable it on per request basis as well.
   |
   */
-  enabled: false,
+  enabled: true,
 
   // You can also use a function that return true or false.
   // enabled: (request) => request.url().startsWith('/api')
@@ -44,7 +44,7 @@ const corsConfig: CorsConfig = {
   |                     one of the above values.
   |
   */
-  origin: true,
+  origin: '*',
 
   /*
   |--------------------------------------------------------------------------
@@ -75,7 +75,7 @@ const corsConfig: CorsConfig = {
   | Function          - Receives the current header and should return one of the above values.
   |
   */
-  headers: true,
+  headers: ['Authorization', 'Content-Type', 'Cache-Control'],
 
   /*
   |--------------------------------------------------------------------------

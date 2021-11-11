@@ -1,4 +1,4 @@
-import z from 'zod'
+import { z } from 'zod'
 import { encryptedMessage, publicKeychain } from './KeychainValidator'
 
 export const registerUser = z.object({
