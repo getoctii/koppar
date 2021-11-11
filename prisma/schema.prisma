@@ -29,12 +29,12 @@ enum RelationshipType {
 }
 
 model Relationship {
-  id String @id @default(uuid())
-  type RelationshipType
-  userID String
-  user User @relation("OutgoingRelationship", fields: [userID], references: [id])
+  id          String           @id @default(uuid())
+  type        RelationshipType
+  userID      String
+  user        User             @relation("OutgoingRelationship", fields: [userID], references: [id])
   recipientID String
-  recipient User @relation("IncomingRelationship", fields: [recipientID], references: [id])
+  recipient   User             @relation("IncomingRelationship", fields: [recipientID], references: [id])
 }
 
 model Keychain {
@@ -42,31 +42,37 @@ model Keychain {
   encryptedKeychain Json
   publicKeychain    Json
   salt              Int[]
-  userID String
-  user              User @relation(fields: [userID], references: [id])
+  userID            String @unique
+  user              User   @relation(fields: [userID], references: [id])
+}
+
+enum UserFlags {
+  DEVELOPER
+  DISABLED
 }
 
 model User {
-  id            String       @id @default(uuid())
-  username      String
-  discriminator Int
-  avatar        String
-  email         String       @unique
-  status        String?
-  state         UserState    @default(OFFLINE)
-  badges        UserBadges[]
-  disabled      Boolean      @default(false)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime    @default(now()) @updatedAt
-  outgoingRelationships Relationship[] @relation("OutgoingRelationship")
-  incomingRelationships Relationship[] @relation("IncomingRelationship")
-  communityMembers CommunityMember[]
-  conversationMembers ConversationMember[]
-  authoredInvites Invite[]
-  keychain      Keychain?
+  id                    String               @id @default(uuid())
+  username              String
+  discriminator         Int
+  avatar                String?
+  email                 String               @unique
+  status                String?
+  state                 UserState            @default(OFFLINE)
+  badges                UserBadges[]
+  flags                 UserFlags[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @default(now()) @updatedAt
+  outgoingRelationships Relationship[]       @relation("OutgoingRelationship")
+  incomingRelationships Relationship[]       @relation("IncomingRelationship")
+  communityMembers      CommunityMember[]
+  conversationMembers   ConversationMember[]
+  authoredInvites       Invite[]
+  keychain              Keychain?
   // lastPing DateTime
-  messages    Message[]
-  totpCode  String
+  messages              Message[]
+  totpCode              String?
+
   @@unique([username, discriminator])
 }
 
@@ -78,10 +84,11 @@ enum ConversationMemberPermission {
 
 model ConversationMember {
   conversationID String
-  conversation Conversation @relation(fields: [conversationID], references: [id])
-  userID String
-  user User @relation(fields: [userID], references: [id])
-  permission ConversationMemberPermission
+  conversation   Conversation                 @relation(fields: [conversationID], references: [id])
+  userID         String
+  user           User                         @relation(fields: [userID], references: [id])
+  permission     ConversationMemberPermission
+
   @@id([userID, conversationID])
 }
 
@@ -91,21 +98,22 @@ enum ConversationType {
 }
 
 model Conversation {
-  id String @id @default(uuid())
-  type ConversationType
-  channel Channel
-  members ConversationMember[]
+  id        String               @id @default(uuid())
+  type      ConversationType
+  channelID String               @unique
+  channel   Channel              @relation(fields: [channelID], references: [id])
+  members   ConversationMember[]
 }
 
 model CommunityMember {
-  id String @id @default(uuid())
-  userID String
-  user User @relation(fields: [userID], references: [id])
+  id          String    @id @default(uuid())
+  userID      String
+  user        User      @relation(fields: [userID], references: [id])
   communityID String
-  community Community @relation(fields: [communityID], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-  groups Group[]
+  community   Community @relation(fields: [communityID], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  groups      Group[]
 }
 
 enum CommunityFlags {
@@ -114,28 +122,28 @@ enum CommunityFlags {
 }
 
 model Community {
-  id String @id @default(uuid())
-  name String
-  icon String?
-  banner String?
+  id          String            @id @default(uuid())
+  name        String
+  icon        String?
+  banner      String?
   description String?
-  flags CommunityFlags[]
-  channels Channel[]
-  groups Group[]
-  invites Invite[]
-  members CommunityMember[]
+  flags       CommunityFlags[]
+  channels    Channel[]
+  groups      Group[]
+  invites     Invite[]
+  members     CommunityMember[]
 }
 
 model Invite {
-  id String @id
-  code String @unique
+  id          String    @id
+  code        String    @unique
   communityID String
-  community Community @relation(fields: [communityID], references: [id])
-  authorID String
-  author User @relation(fields: [authorID], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-  uses Int @default(0)
+  community   Community @relation(fields: [communityID], references: [id])
+  authorID    String
+  author      User      @relation(fields: [authorID], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  uses        Int       @default(0)
 }
 
 enum GroupPermissions {
@@ -159,14 +167,14 @@ enum GroupPermissions {
 }
 
 model Group {
-  id String @id @default(uuid())
-  name String
-  color String?
+  id          String             @id @default(uuid())
+  name        String
+  color       String?
   permissions GroupPermissions[]
-  members CommunityMember[]
+  members     CommunityMember[]
   communityID String
-  community Community @relation(fields: [communityID], references: [id])
-  overrides ChannelOverrides[]
+  community   Community          @relation(fields: [communityID], references: [id])
+  overrides   ChannelOverrides[]
 }
 
 enum ChannelType {
@@ -186,26 +194,25 @@ enum ChannelPermissions {
 
 model ChannelOverrides {
   channelID String
-  channel Channel @relation(fields: [channelID], references: [id])
-  groupID String
-  group Group @relation(fields: [groupID], references: [id])
-  allow ChannelPermissions[]
-  deny ChannelPermissions[]
+  channel   Channel              @relation(fields: [channelID], references: [id])
+  groupID   String
+  group     Group                @relation(fields: [groupID], references: [id])
+  allow     ChannelPermissions[]
+  deny      ChannelPermissions[]
 
   @@id([channelID, groupID])
 }
 
 model Channel {
-  id           String         @id @default(uuid())
+  id           String               @id @default(uuid())
   type         ChannelType
   messages     Message[]
-  conversationID String?
-  conversation Conversation? @relation(fields: [conversationID], references: [id])
-  communityID String?
-  community Community? @relation(fields: [communityID], references: [id])
-  overrides ChannelOverrides[]
-  baseAllow ChannelPermissions[]
-  baseDeny ChannelPermissions[]
+  conversation Conversation?
+  communityID  String?
+  community    Community?           @relation(fields: [communityID], references: [id])
+  overrides    ChannelOverrides[]
+  baseAllow    ChannelPermissions[]
+  baseDeny     ChannelPermissions[]
 }
 
 model Message {
