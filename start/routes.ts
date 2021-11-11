@@ -25,5 +25,5 @@ Route.group(() => {
   Route.post('/login', 'UsersController.login')
   Route.post('/register', 'UsersController.register')
   Route.get('/:id', 'UsersController.get').middleware(['auth'])
-  Route.get('/:id', 'UsersController.me').middleware(['auth'])
+  Route.get('/me', 'UsersController.me').middleware(['auth'])
 }).prefix('/users')
