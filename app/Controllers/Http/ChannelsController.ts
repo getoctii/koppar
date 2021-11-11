@@ -30,6 +30,15 @@ export default class ChannelsController {
       },
     })
 
+    const lastMessage = await db.message.findFirst({
+      where: {
+        channelID: channel.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
     return {
       id: channel.id,
       type: channel.type,
@@ -38,6 +47,7 @@ export default class ChannelsController {
       baseAllow: channel.baseAllow,
       baseDeny: channel.baseDeny,
       lastReadMessageID: read?.lastReadMessageID,
+      lastMessageID: lastMessage?.id,
     }
   }
 
