@@ -13,6 +13,7 @@ import { z } from 'zod'
 export default class UsersController {
   public async me(ctx: HttpContextContract) {
     return ctx.response.ok({
+      id: ctx.user!.id,
       email: ctx.user!.email,
       username: ctx.user!.username,
       discriminator: ctx.user!.discriminator,
@@ -41,6 +42,7 @@ export default class UsersController {
     if (!user) return ctx.response.notFound({ error: 'UserNotFound' })
 
     return ctx.response.ok({
+      id: user.id,
       username: user.username,
       discriminator: user.discriminator,
       avatar: user.avatar,
