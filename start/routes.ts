@@ -59,3 +59,9 @@ Route.group(() => {
 })
   .prefix('/communities')
   .middleware(['auth'])
+
+Route.group(() => {
+  Route.get('/:id', 'MessagesController.get')
+})
+  .prefix('/messages')
+  .middleware(['auth'])
