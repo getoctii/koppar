@@ -58,6 +58,19 @@ export default class UsersController {
     })
   }
 
+  public async myConversations(ctx: HttpContextContract) {
+    const user = await db.user.findUnique({
+      where: {
+        id: ctx.user!.id,
+      },
+      include: {
+        conversationMembers: true,
+      },
+    })
+
+    return ctx.response.ok(user!.conversationMembers.map((m) => m.conversationID))
+  }
+
   public async putRelationship(ctx: HttpContextContract) {
     const input = putRelationship.safeParse(ctx.request.body())
     if (!input.success) return ctx.response.badRequest({ error: input.error })

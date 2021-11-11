@@ -13,7 +13,7 @@ export const isBlocked = async (userID: string, recipientID: string) => {
 }
 
 export const areFriends = async (userID: string, recipientID: string) => {
-  return (
+  return !!(
     (await db.relationship.findFirst({
       where: {
         userID,

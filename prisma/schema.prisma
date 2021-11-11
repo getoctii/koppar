@@ -180,8 +180,8 @@ model Group {
 }
 
 enum ChannelType {
-  CONVERSATION
-  COMMUNITY
+  TEXT
+  VOICE
 }
 
 enum ChannelPermissions {
