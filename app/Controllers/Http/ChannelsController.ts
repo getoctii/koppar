@@ -24,7 +24,7 @@ export default class ChannelsController {
       id: channel.id,
       type: channel.type,
       conversationID: channel.conversation?.id,
-      communityID: channel.communityID ?? undefined,
+      communityID: channel.communityID,
       baseAllow: channel.baseAllow,
       baseDeny: channel.baseDeny,
     }

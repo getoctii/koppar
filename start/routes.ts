@@ -26,6 +26,7 @@ Route.group(() => {
   Route.post('/register', 'UsersController.register')
   Route.get('/me', 'UsersController.me').middleware(['auth'])
   Route.get('/me/conversations', 'UsersController.myConversations').middleware(['auth'])
+  Route.get('/me/communities', 'UsersController.myCommunities').middleware(['auth'])
   Route.get('/me/relationships', 'UsersController.myRelationships').middleware(['auth'])
   Route.delete('/me/relationships/:id', 'UsersController.deleteRelationship').middleware(['auth'])
   Route.put('/me/relationships/:id', 'UsersController.putRelationship').middleware(['auth'])
@@ -49,4 +50,11 @@ Route.group(() => {
   Route.post('/:id/messages', 'ChannelsController.postMessage')
 })
   .prefix('/channels')
+  .middleware(['auth'])
+
+Route.group(() => {
+  Route.post('/', 'CommunitiesController.create')
+  Route.get('/:id', 'CommunitiesController.get')
+})
+  .prefix('/communities')
   .middleware(['auth'])

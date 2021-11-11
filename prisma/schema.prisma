@@ -74,7 +74,7 @@ model User {
   // lastPing DateTime
   messages              Message[]
   totpCode              String?
-
+  ownedCommunities      Community[]
   @@unique([username, discriminator])
 }
 
@@ -108,14 +108,15 @@ model Conversation {
 }
 
 model CommunityMember {
-  id          String    @id @default(uuid())
   userID      String
-  user        User      @relation(fields: [userID], references: [id])
+  user        User          @relation(fields: [userID], references: [id])
   communityID String
-  community   Community @relation(fields: [communityID], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now()) @updatedAt
-  groups      Group[]
+  community   Community     @relation(fields: [communityID], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+  members       GroupMember[]
+
+  @@id([communityID, userID])
 }
 
 enum CommunityFlags {
@@ -134,6 +135,8 @@ model Community {
   groups      Group[]
   invites     Invite[]
   members     CommunityMember[]
+  owner       User              @relation(fields: [ownerID], references: [id])
+  ownerID     String
 }
 
 model Invite {
@@ -173,10 +176,19 @@ model Group {
   name        String
   color       String?
   permissions GroupPermissions[]
-  members     CommunityMember[]
+  members     GroupMember[]
   communityID String
   community   Community          @relation(fields: [communityID], references: [id])
   overrides   ChannelOverrides[]
+}
+
+model GroupMember {
+  groupID String
+  group   Group  @relation(fields: [groupID], references: [id])
+  member            CommunityMember @relation(fields: [memberCommunityID, memberUserID], references: [communityID, userID])
+  memberCommunityID String
+  memberUserID      String
+  @@id([groupID, memberCommunityID, memberUserID])
 }
 
 enum ChannelType {
