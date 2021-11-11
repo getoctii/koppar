@@ -46,6 +46,7 @@ Route.group(() => {
 
 Route.group(() => {
   Route.get('/:id', 'ChannelsController.get')
+  Route.post('/:id/ack', 'ChannelsController.ack')
   Route.get('/:id/messages', 'ChannelsController.getMessages')
   Route.post('/:id/messages', 'ChannelsController.postMessage')
 })
