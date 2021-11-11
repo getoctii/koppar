@@ -180,6 +180,8 @@ export default class ConversationsController {
     })
 
     if (!conversation) return ctx.response.notFound({ error: 'ConversationNotFound' })
+    if (conversation.type !== 'GROUP')
+      return ctx.response.badRequest({ error: 'InvalidConversationType' })
 
     const member = await getMember(conversation.id, ctx.user!.id)
     if (!member) return ctx.response.notFound({ error: 'ConversationNotFound' })
@@ -258,6 +260,8 @@ export default class ConversationsController {
     })
 
     if (!conversation) return ctx.response.notFound({ error: 'ConversationNotFound' })
+    if (conversation.type !== 'GROUP')
+      return ctx.response.badRequest({ error: 'InvalidConversationType' })
 
     const member = await getMember(conversation.id, ctx.user!.id)
     if (!member) return ctx.response.notFound({ error: 'ConversationNotFound' })

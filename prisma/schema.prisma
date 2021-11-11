@@ -220,6 +220,7 @@ model ChannelOverrides {
 model Channel {
   id           String               @id @default(uuid())
   type         ChannelType
+  name         String?
   messages     Message[]
   conversation Conversation?
   communityID  String?

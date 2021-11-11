@@ -1,5 +1,6 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { inChannel } from 'App/Util/Channel'
+import { areFriends } from 'App/Util/Relationship'
 import { createMessage } from 'App/Validators/CreateMessageValidator'
 import { db } from 'Config/db'
 
@@ -100,6 +101,16 @@ export default class ChannelsController {
       return ctx.response.notFound({ error: 'ChannelNotFound' })
 
     if (channel.type !== 'TEXT') return ctx.response.badRequest({ error: 'WrongChannelType' })
+    if (channel.conversation?.type === 'DM') {
+      const members = await db.conversationMember.findMany({
+        where: {
+          conversationID: channel.conversation.id,
+        },
+      })
+
+      if (members.length === 2 && !(await areFriends(members[0].userID, members[1].userID)))
+        return ctx.response.badRequest({ error: 'DeliveryFailed' })
+    }
 
     // TODO: check if the user has perms to send messages
 

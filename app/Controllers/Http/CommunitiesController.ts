@@ -1,5 +1,6 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { getCommunityMember } from 'App/Util/Community'
+import { createChannel } from 'App/Validators/CreateChannelValidator'
 import { createCommunity } from 'App/Validators/CreateCommunityValidator'
 import { db } from 'Config/db'
 
@@ -32,6 +33,9 @@ export default class CommunitiesController {
       where: {
         id,
       },
+      include: {
+        channels: true,
+      },
     })
 
     if (!community) return ctx.response.notFound({ error: 'CommunityNotFound' })
@@ -47,5 +51,55 @@ export default class CommunitiesController {
       name: community.name,
       banner: community.banner,
     }
+  }
+
+  public async getChannels(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+
+    const community = await db.community.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        channels: true,
+      },
+    })
+
+    if (!community) return ctx.response.notFound({ error: 'CommunityNotFound' })
+    if (!(await getCommunityMember(id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'CommunityNotFound' })
+
+    return community.channels.map((c) => c.id)
+  }
+
+  public async createChannel(ctx: HttpContextContract) {
+    const input = createChannel.safeParse(ctx.request.body())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+
+    const id = ctx.request.param('id')
+
+    const community = await db.community.findUnique({
+      where: {
+        id,
+      },
+    })
+
+    if (!community) return ctx.response.notFound({ error: 'CommunityNotFound' })
+    if (!(await getCommunityMember(id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'CommunityNotFound' })
+
+    // TODO: More advanced permissions checks
+    if (community.ownerID !== ctx.user!.id)
+      return ctx.response.unauthorized({ error: 'InsufficentPermission' })
+
+    const channel = await db.channel.create({
+      data: {
+        type: 'TEXT',
+        communityID: community.id,
+        name: input.data.name,
+      },
+    })
+
+    return ctx.response.ok({ id: channel.id })
   }
 }
