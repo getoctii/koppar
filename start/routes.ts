@@ -42,3 +42,11 @@ Route.group(() => {
 })
   .prefix('/conversations')
   .middleware(['auth'])
+
+Route.group(() => {
+  Route.get('/:id', 'ChannelsController.get')
+  Route.get('/:id/messages', 'ChannelsController.getMessages')
+  Route.post('/:id/messages', 'ChannelsController.postMessage')
+})
+  .prefix('/channels')
+  .middleware(['auth'])
