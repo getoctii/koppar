@@ -75,6 +75,8 @@ model User {
   messages              Message[]
   totpCode              String?
   ownedCommunities      Community[]
+  read                  Read[]
+
   @@unique([username, discriminator])
 }
 
@@ -114,7 +116,7 @@ model CommunityMember {
   community   Community     @relation(fields: [communityID], references: [id])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @default(now()) @updatedAt
-  members       GroupMember[]
+  members     GroupMember[]
 
   @@id([communityID, userID])
 }
@@ -183,11 +185,12 @@ model Group {
 }
 
 model GroupMember {
-  groupID String
-  group   Group  @relation(fields: [groupID], references: [id])
+  groupID           String
+  group             Group           @relation(fields: [groupID], references: [id])
   member            CommunityMember @relation(fields: [memberCommunityID, memberUserID], references: [communityID, userID])
   memberCommunityID String
   memberUserID      String
+
   @@id([groupID, memberCommunityID, memberUserID])
 }
 
@@ -228,6 +231,7 @@ model Channel {
   overrides    ChannelOverrides[]
   baseAllow    ChannelPermissions[]
   baseDeny     ChannelPermissions[]
+  read         Read[]
 }
 
 model Message {
@@ -239,4 +243,14 @@ model Message {
   channelID String
   author    User      @relation(fields: [authorID], references: [id])
   authorID  String
+}
+
+model Read {
+  userID            String
+  user              User    @relation(fields: [userID], references: [id])
+  channelID         String
+  channel           Channel @relation(fields: [channelID], references: [id])
+  lastReadMessageID String
+
+  @@id([channelID, userID])
 }

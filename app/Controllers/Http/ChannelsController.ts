@@ -21,6 +21,15 @@ export default class ChannelsController {
     if (!(await inChannel(channel.id, ctx.user!.id)))
       return ctx.response.notFound({ error: 'ChannelNotFound' })
 
+    const read = await db.read.findUnique({
+      where: {
+        channelID_userID: {
+          channelID: channel.id,
+          userID: ctx.user!.id,
+        },
+      },
+    })
+
     return {
       id: channel.id,
       type: channel.type,
@@ -28,6 +37,7 @@ export default class ChannelsController {
       communityID: channel.communityID,
       baseAllow: channel.baseAllow,
       baseDeny: channel.baseDeny,
+      lastReadMessageID: read?.lastReadMessageID,
     }
   }
 
@@ -126,5 +136,54 @@ export default class ChannelsController {
     })
 
     return ctx.response.send({ id: message.id })
+  }
+
+  public async ack(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+
+    const channel = await db.channel.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        conversation: true,
+      },
+    })
+
+    if (!channel) return ctx.response.notFound({ error: 'ChannelNotFound' })
+    if (!(await inChannel(channel.id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'ChannelNotFound' })
+
+    if (channel.type !== 'TEXT') return ctx.response.badRequest({ error: 'WrongChannelType' })
+
+    const lastMessage = await db.message.findFirst({
+      where: {
+        channelID: channel.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    if (lastMessage) {
+      await db.read.upsert({
+        where: {
+          channelID_userID: {
+            channelID: channel.id,
+            userID: ctx.user!.id,
+          },
+        },
+        create: {
+          channelID: channel.id,
+          userID: ctx.user!.id,
+          lastReadMessageID: lastMessage.id,
+        },
+        update: {
+          lastReadMessageID: lastMessage.id,
+        },
+      })
+    }
+
+    return ctx.response.send(undefined)
   }
 }
