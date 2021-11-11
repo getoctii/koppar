@@ -84,7 +84,7 @@ export default class UsersController {
       const allDisciminators = [...Array(10000).keys()].slice(1)
       const discriminators = new Set(users.map((user) => user.discriminator))
 
-      const complement = allDisciminators.filter((d) => discriminators.has(d))
+      const complement = allDisciminators.filter((d) => !discriminators.has(d))
 
       discriminator = complement[Math.floor(Math.random() * complement.length)]
     }
