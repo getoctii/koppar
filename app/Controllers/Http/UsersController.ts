@@ -144,13 +144,12 @@ export default class UsersController {
       return ctx.response.unauthorized({ error: 'InvalidToken' })
     }
 
-    return {
-      ok: true,
+    return ctx.response.ok({
       token: jwt.sign({ type: 'user' }, Env.get('JWT_KEY'), {
         expiresIn: '7w',
         subject: user.id,
       }),
-    }
+    })
   }
 
   public async challenge(ctx: HttpContextContract) {
