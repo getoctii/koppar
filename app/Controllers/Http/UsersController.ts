@@ -11,6 +11,7 @@ import { publicKeychain } from 'App/Validators/KeychainValidator'
 import { z } from 'zod'
 import { putRelationship } from 'App/Validators/PutRelationshipValidator'
 import { isBlocked } from 'App/Util/Relationship'
+import { findUser } from 'App/Validators/FindUserValidator'
 
 export default class UsersController {
   public async me(ctx: HttpContextContract) {
@@ -173,6 +174,41 @@ export default class UsersController {
     const user = await db.user.findUnique({
       where: {
         id: userID,
+      },
+      include: {
+        keychain: true,
+      },
+    })
+
+    if (!user) return ctx.response.notFound({ error: 'UserNotFound' })
+
+    return ctx.response.ok({
+      id: user.id,
+      username: user.username,
+      discriminator: user.discriminator,
+      avatar: user.avatar,
+      status: user.status,
+      state: user.state,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      badges: user.badges,
+      flags: user.flags,
+      keychain: {
+        publicKeychain: user.keychain!.publicKeychain,
+      },
+    })
+  }
+
+  public async find(ctx: HttpContextContract) {
+    const input = findUser.safeParse(ctx.request.qs())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+
+    const user = await db.user.findUnique({
+      where: {
+        username_discriminator: {
+          username: input.data.username,
+          discriminator: input.data.discriminator,
+        },
       },
       include: {
         keychain: true,
