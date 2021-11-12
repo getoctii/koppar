@@ -64,6 +64,27 @@ export default class ConversationsController {
         return ctx.response.badRequest({ error: 'NotFriends' })
     }
 
+    if (
+      input.data.type === 'DM' &&
+      (await db.conversation.findFirst({
+        where: {
+          members: {
+            every: {
+              OR: [
+                {
+                  userID: ctx.user?.id,
+                },
+                {
+                  userID: input.data.recipient,
+                },
+              ],
+            },
+          },
+        },
+      }))
+    )
+      return ctx.response.badRequest({ error: 'AlreadyExists' })
+
     const conversation = await db.conversation.create({
       data: {
         type: input.data.type,
