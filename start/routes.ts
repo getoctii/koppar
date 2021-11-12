@@ -30,6 +30,7 @@ Route.group(() => {
   Route.get('/me/relationships', 'UsersController.myRelationships').middleware(['auth'])
   Route.delete('/me/relationships/:id', 'UsersController.deleteRelationship').middleware(['auth'])
   Route.put('/me/relationships/:id', 'UsersController.putRelationship').middleware(['auth'])
+  Route.get('/find', 'UsersController.find').middleware(['auth'])
   Route.get('/:id', 'UsersController.get').middleware(['auth'])
 }).prefix('/users')
 
