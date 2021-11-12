@@ -1,4 +1,5 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
+import Ws from 'App/Services/Ws'
 import { inChannel } from 'App/Util/Channel'
 import { areFriends } from 'App/Util/Relationship'
 import { createMessage } from 'App/Validators/CreateMessageValidator'
@@ -143,6 +144,14 @@ export default class ChannelsController {
         channelID: channel.id,
         payload: input.data.payload,
       },
+    })
+
+    Ws.io.to('channel/messages:' + channel.id).emit('newMessage', message.channelID, {
+      id: message.id,
+      createdAt: message.createdAt,
+      updatedAt: message.updatedAt,
+      authorID: message.authorID,
+      payload: message.payload,
     })
 
     return ctx.response.send({ id: message.id })

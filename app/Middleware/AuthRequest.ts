@@ -8,12 +8,21 @@ export default class AuthRequest {
     const authorization = ctx.request.header('authorization')
     if (!authorization) return ctx.response.unauthorized({ error: 'AuthorizationRequired' })
 
-    const token = jwt.verify(authorization, Env.get('JWT_KEY')) as {
+    let token: {
       sub: string
       type: string
     }
 
-    if (token.type !== 'user') return ctx.response.unauthorized({ error: 'Not a user token' })
+    try {
+      token = jwt.verify(authorization, Env.get('JWT_KEY')) as {
+        sub: string
+        type: string
+      }
+    } catch {
+      return ctx.response.unauthorized({ error: 'InvalidToken' })
+    }
+
+    if (token.type !== 'user') return ctx.response.unauthorized({ error: 'NotUserToken' })
 
     const user = await db.user.findUnique({ where: { id: token.sub }, include: { keychain: true } })
     if (!user) return ctx.response.notFound({ error: "The user doesn't exist?!?!?!" })
