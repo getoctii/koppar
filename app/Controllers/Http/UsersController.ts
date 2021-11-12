@@ -98,6 +98,7 @@ export default class UsersController {
     })
 
     if (!recipient) return ctx.response.notFound({ error: 'UserNotFound' })
+    if (recipient.id !== ctx.user!.id) return ctx.response.badRequest({ error: 'InvalidUser' })
 
     if (input.data.type === 'OUTGOING' && (await isBlocked(ctx.user!.id, recipient.id)))
       return ctx.response.notFound({ error: 'UserNotFound' })
