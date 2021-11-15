@@ -57,6 +57,8 @@ Route.group(() => {
 Route.group(() => {
   Route.post('/', 'CommunitiesController.create')
   Route.get('/:id', 'CommunitiesController.get')
+  Route.get('/:id/channels', 'CommunitiesController.getChannels')
+  Route.post('/:id/channels', 'CommunitiesController.createChannel')
 })
   .prefix('/communities')
   .middleware(['auth'])

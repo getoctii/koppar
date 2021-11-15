@@ -43,7 +43,9 @@ export default class ChannelsController {
     return {
       id: channel.id,
       type: channel.type,
+      name: channel.name,
       conversationID: channel.conversation?.id,
+      parentID: channel.parentID,
       communityID: channel.communityID,
       baseAllow: channel.baseAllow,
       baseDeny: channel.baseDeny,

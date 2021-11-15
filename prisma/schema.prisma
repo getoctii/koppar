@@ -197,6 +197,7 @@ model GroupMember {
 enum ChannelType {
   TEXT
   VOICE
+  CATEGORY
 }
 
 enum ChannelPermissions {
@@ -228,10 +229,13 @@ model Channel {
   conversation Conversation?
   communityID  String?
   community    Community?           @relation(fields: [communityID], references: [id])
+  parentID     String?
+  parent       Channel?             @relation("ChannelChildren", fields: [parentID], references: [id])
   overrides    ChannelOverrides[]
   baseAllow    ChannelPermissions[]
   baseDeny     ChannelPermissions[]
   read         Read[]
+  children     Channel[]            @relation("ChannelChildren")
 }
 
 model Message {
