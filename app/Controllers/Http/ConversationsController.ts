@@ -5,6 +5,8 @@ import { createConversation } from 'App/Validators/CreateConversationValidator'
 import { db } from 'Config/db'
 import { getMember } from 'App/Util/Conversation'
 import { putConversationMember } from 'App/Validators/PutConversationMember'
+import { patchConversation } from 'App/Validators/PatchConversationValidator'
+import Ws from 'App/Services/Ws'
 
 export default class ConversationsController {
   public async create(ctx: HttpContextContract) {
@@ -111,6 +113,17 @@ export default class ConversationsController {
         },
       },
     })
+    ;(await Ws.io.in('user:' + ctx.user!.id).fetchSockets()).forEach((socket) =>
+      socket.join([
+        'conversation:' + conversation.id,
+        'channel:' + conversation.channelID,
+        'channel/messages:' + conversation.channelID,
+      ])
+    )
+
+    Ws.io.to('user:' + ctx.user!.id).emit('CONVERSATION_CREATE', {
+      id: conversation.id,
+    })
 
     if (input.data.type === 'DM') {
       await db.conversationMember.create({
@@ -128,6 +141,16 @@ export default class ConversationsController {
           },
         },
       })
+      ;(await Ws.io.in('user:' + input.data.recipient).fetchSockets()).forEach((socket) =>
+        socket.join([
+          'conversation:' + conversation.id,
+          'channel:' + conversation.channelID,
+          'channel/messages:' + conversation.channelID,
+        ])
+      )
+      Ws.io.to('user:' + input.data.recipient).emit('CONVERSATION_CREATE', {
+        id: conversation.id,
+      })
     } else {
       await db.conversationMember.createMany({
         data: input.data.recipients.map((r) => ({
@@ -135,6 +158,22 @@ export default class ConversationsController {
           conversationID: conversation.id,
           userID: r,
         })),
+      })
+
+      await Promise.all(
+        input.data.recipients.map(async (recipient) => {
+          ;(await Ws.io.in('user:' + recipient).fetchSockets()).forEach((socket) =>
+            socket.join([
+              'conversation:' + conversation.id,
+              'channel:' + conversation.channelID,
+              'channel/messages:' + conversation.channelID,
+            ])
+          )
+        })
+      )
+
+      Ws.io.to('conversation:' + conversation.id).emit('CONVERSATION_CREATE', {
+        id: conversation.id,
       })
     }
 
@@ -161,9 +200,51 @@ export default class ConversationsController {
 
     return ctx.response.ok({
       id: conversation.id,
+      name: conversation.name,
       type: conversation.type,
       channelID: conversation.channelID,
     })
+  }
+
+  public async patch(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+    const input = patchConversation.safeParse(ctx.request.body())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+
+    const conversation = await db.conversation.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        members: true,
+      },
+    })
+
+    if (!conversation) return ctx.response.notFound({ error: 'ConversationNotFound' })
+    if (conversation.type !== 'GROUP')
+      return ctx.response.badRequest({ error: 'InvalidConversationType' })
+
+    const member = await getMember(conversation.id, ctx.user!.id)
+    if (!member) return ctx.response.notFound({ error: 'ConversationNotFound' })
+    if (member.permission !== 'ADMINISTRATOR' && member.permission !== 'OWNER')
+      return ctx.response.badRequest({ error: 'InsufficientPermissions' })
+
+    await db.conversation.update({
+      where: {
+        id,
+      },
+      data: {
+        name: input.data.name,
+      },
+    })
+
+    Ws.io.to('conversation:' + conversation.id).emit('CONVERSATION_UPDATE', {
+      id: conversation.id,
+      name: input.data.name,
+      authorID: ctx.user!.id,
+    })
+
+    return ctx.response.ok(undefined)
   }
 
   public async getMembers(ctx: HttpContextContract) {
@@ -241,7 +322,7 @@ export default class ConversationsController {
     if (input.data.permission === 'OWNER' && member.permission !== 'OWNER')
       return ctx.response.badRequest({ error: 'InsufficientPermissions' })
 
-    if (input.data.permission)
+    if (input.data.permission) {
       await db.conversationMember.upsert({
         where: {
           userID_conversationID: {
@@ -267,6 +348,28 @@ export default class ConversationsController {
         },
       })
 
+      Ws.io
+        .to('conversation:' + conversation.id)
+        .emit(!recipientMember ? 'MEMBER_ADD' : 'MEMBER_UPDATE', {
+          id: conversation.id,
+          userID: recipient.id,
+          authorID: ctx.user!.id,
+          permission: input.data.permission,
+        })
+      if (!recipientMember) {
+        ;(await Ws.io.in('user:' + recipient.id).fetchSockets()).forEach((socket) =>
+          [
+            'conversation:' + conversation.id,
+            'channel:' + conversation.channelID,
+            'channel/messages:' + conversation.channelID,
+          ].forEach((room) => socket.leave(room))
+        )
+
+        Ws.io.to('user:' + recipient.id).emit('CONVERSATION_CREATE', {
+          id: conversation.id,
+        })
+      }
+    }
     return ctx.response.ok(undefined)
   }
 
@@ -327,6 +430,24 @@ export default class ConversationsController {
       },
     })
 
+    Ws.io.to('conversation:' + conversation.id).emit('MEMBER_REMOVE', {
+      id: conversation.id,
+      userID: recipient.id,
+      authorID: ctx.user!.id,
+    })
+    ;(await Ws.io.in('user:' + ctx.user!.id).fetchSockets()).forEach((socket) =>
+      [
+        'conversation:' + conversation.id,
+        'channel:' + conversation.channelID,
+        'channel/messages:' + conversation.channelID,
+      ].forEach((room) => socket.leave(room))
+    )
+
+    Ws.io.to('user:' + recipient.id).emit('MEMBER_REMOVE', {
+      id: conversation.id,
+      userID: recipient.id,
+    })
+
     return ctx.response.ok(undefined)
   }
 
@@ -351,6 +472,18 @@ export default class ConversationsController {
           conversationID: conversation.id,
         },
       },
+    })
+    ;(await Ws.io.in('user:' + ctx.user!.id).fetchSockets()).forEach((socket) =>
+      [
+        'conversation:' + conversation.id,
+        'channel:' + conversation.channelID,
+        'channel/messages:' + conversation.channelID,
+      ].forEach((room) => socket.leave(room))
+    )
+
+    Ws.io.to('conversation:' + conversation.id).emit('MEMBER_LEAVE', {
+      id: conversation.id,
+      userID: ctx.user!.id,
     })
 
     return ctx.response.ok(undefined)

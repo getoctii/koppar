@@ -37,6 +37,7 @@ Route.group(() => {
 Route.group(() => {
   Route.post('/', 'ConversationsController.create')
   Route.get('/:id', 'ConversationsController.get')
+  Route.patch('/:id', 'ConversationsController.patch')
   Route.post('/:id/leave', 'ConversationsController.leave')
   Route.get('/:id/members', 'ConversationsController.getMembers')
   Route.put('/:id/members/:userID', 'ConversationsController.putMember')

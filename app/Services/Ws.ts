@@ -18,6 +18,7 @@ class Ws {
       cors: {
         origin: '*',
       },
+      path: '/gateway',
     })
   }
 }

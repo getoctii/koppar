@@ -103,6 +103,8 @@ enum ConversationType {
 
 model Conversation {
   id        String               @id @default(uuid())
+  name      String?
+  icon      String?
   type      ConversationType
   channelID String               @unique
   channel   Channel              @relation(fields: [channelID], references: [id])

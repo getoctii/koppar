@@ -51,6 +51,7 @@ export default class ChannelsController {
       baseDeny: channel.baseDeny,
       lastReadMessageID: read?.lastReadMessageID,
       lastMessageID: lastMessage?.id,
+      lastMessageDate: lastMessage?.createdAt,
     }
   }
 
