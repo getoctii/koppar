@@ -94,7 +94,7 @@ export default class CommunitiesController {
 
     const channel = await db.channel.create({
       data: {
-        type: 'TEXT',
+        type: input.data.type ?? 'TEXT',
         communityID: community.id,
         name: input.data.name,
       },

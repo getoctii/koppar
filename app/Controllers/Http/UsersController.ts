@@ -12,6 +12,9 @@ import { z } from 'zod'
 import { putRelationship } from 'App/Validators/PutRelationshipValidator'
 import { isBlocked } from 'App/Util/Relationship'
 import { findUser } from 'App/Validators/FindUserValidator'
+import { patchUser } from 'App/Validators/PatchUserValidator'
+import Ws from 'App/Services/Ws'
+import { UserState } from '.prisma/client'
 
 export default class UsersController {
   public async me(ctx: HttpContextContract) {
@@ -29,6 +32,24 @@ export default class UsersController {
       flags: ctx.user!.flags,
       keychain: ctx.user!.keychain!,
     })
+  }
+
+  public async update(ctx: HttpContextContract) {
+    const input = patchUser.safeParse(ctx.request.body())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+
+    await db.user.update({
+      where: {
+        id: ctx.user!.id,
+      },
+      data: {
+        username: input.data.username,
+        state: input.data.state,
+        status: input.data.status,
+      },
+    })
+
+    return ctx.response.ok(undefined)
   }
 
   public async myRelationships(ctx: HttpContextContract) {
@@ -182,14 +203,14 @@ export default class UsersController {
     })
 
     if (!user) return ctx.response.notFound({ error: 'UserNotFound' })
-
+    const sockets = await Ws.io.in(`user:${user.id}`).fetchSockets()
     return ctx.response.ok({
       id: user.id,
       username: user.username,
       discriminator: user.discriminator,
       avatar: user.avatar,
       status: user.status,
-      state: user.state,
+      state: sockets.length > 0 ? user.state ?? UserState.ONLINE : UserState.OFFLINE,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       badges: user.badges,

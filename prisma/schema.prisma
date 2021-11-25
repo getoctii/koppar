@@ -60,7 +60,7 @@ model User {
   avatar                String?
   email                 String               @unique
   status                String?
-  state                 UserState            @default(OFFLINE)
+  state                 UserState            @default(ONLINE)
   badges                UserBadges[]
   flags                 UserFlags[]
   createdAt             DateTime             @default(now())

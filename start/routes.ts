@@ -25,6 +25,7 @@ Route.group(() => {
   Route.post('/login', 'UsersController.login')
   Route.post('/register', 'UsersController.register')
   Route.get('/me', 'UsersController.me').middleware(['auth'])
+  Route.patch('/me', 'UsersController.update').middleware(['auth'])
   Route.get('/me/conversations', 'UsersController.myConversations').middleware(['auth'])
   Route.get('/me/communities', 'UsersController.myCommunities').middleware(['auth'])
   Route.get('/me/relationships', 'UsersController.myRelationships').middleware(['auth'])
