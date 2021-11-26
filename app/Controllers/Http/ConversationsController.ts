@@ -95,6 +95,11 @@ export default class ConversationsController {
             type: 'TEXT',
           },
         },
+        voiceChannel: {
+          create: {
+            type: 'VOICE',
+          },
+        },
       },
     })
 

@@ -70,3 +70,9 @@ Route.group(() => {
 })
   .prefix('/messages')
   .middleware(['auth'])
+
+Route.group(() => {
+  Route.post('/started/:id', 'VoicesController.started')
+  Route.put('/:id/users/:userID', 'VoicesController.join')
+  Route.delete('/:id/users/:userID', 'VoicesController.leave')
+}).prefix('/voice')

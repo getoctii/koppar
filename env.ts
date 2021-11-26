@@ -23,4 +23,5 @@ export default Env.rules({
   NODE_ENV: Env.schema.enum(['development', 'production', 'testing'] as const),
   JWT_KEY: Env.schema.string(),
   DATABASE_URL: Env.schema.string(),
+  GATEWAY_TOKEN: Env.schema.string(),
 })

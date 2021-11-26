@@ -78,6 +78,8 @@ model User {
   read                  Read[]
 
   @@unique([username, discriminator])
+  voiceRoom   VoiceRoom? @relation(fields: [voiceRoomID], references: [id])
+  voiceRoomID String?
 }
 
 enum ConversationMemberPermission {
@@ -102,13 +104,15 @@ enum ConversationType {
 }
 
 model Conversation {
-  id        String               @id @default(uuid())
-  name      String?
-  icon      String?
-  type      ConversationType
-  channelID String               @unique
-  channel   Channel              @relation(fields: [channelID], references: [id])
-  members   ConversationMember[]
+  id             String               @id @default(uuid())
+  name           String?
+  icon           String?
+  type           ConversationType
+  channelID      String               @unique
+  channel        Channel              @relation(fields: [channelID], references: [id])
+  voiceChannelID String?
+  voiceChannel   Channel?              @relation("VoiceChannel", fields: [voiceChannelID], references: [id])
+  members        ConversationMember[]
 }
 
 model CommunityMember {
@@ -238,6 +242,8 @@ model Channel {
   baseDeny     ChannelPermissions[]
   read         Read[]
   children     Channel[]            @relation("ChannelChildren")
+  voiceRoom    VoiceRoom?
+  conversationVoice Conversation[]       @relation("VoiceChannel")
 }
 
 model Message {
@@ -259,4 +265,12 @@ model Read {
   lastReadMessageID String
 
   @@id([channelID, userID])
+}
+
+model VoiceRoom {
+  id        String  @id @default(uuid())
+  users     User[]
+  channelID String  @unique
+  channel   Channel @relation(fields: [channelID], references: [id])
+  serverID  String
 }
