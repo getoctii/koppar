@@ -1,9 +1,14 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Ws from 'App/Services/Ws'
 import { inChannel } from 'App/Util/Channel'
+import { getCommunityMember } from 'App/Util/Community'
 import { areFriends } from 'App/Util/Relationship'
 import { createMessage } from 'App/Validators/CreateMessageValidator'
+import { patchChannel } from 'App/Validators/PatchChannelValidator'
 import { db } from 'Config/db'
+import { servers } from 'Config/voice'
+import jsonwebtoken from 'jsonwebtoken'
+import Env from '@ioc:Adonis/Core/Env'
 
 export default class ChannelsController {
   public async get(ctx: HttpContextContract) {
@@ -15,6 +20,11 @@ export default class ChannelsController {
       },
       include: {
         conversation: true,
+        voiceRoom: {
+          include: {
+            users: true,
+          },
+        },
       },
     })
 
@@ -52,6 +62,7 @@ export default class ChannelsController {
       lastReadMessageID: read?.lastReadMessageID,
       lastMessageID: lastMessage?.id,
       lastMessageDate: lastMessage?.createdAt,
+      voiceUsers: channel.voiceRoom?.users.map((user) => user.id),
     }
   }
 
@@ -207,5 +218,135 @@ export default class ChannelsController {
     }
 
     return ctx.response.send(undefined)
+  }
+
+  public async join(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+
+    const channel = await db.channel.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        conversation: true,
+        voiceRoom: {
+          include: {
+            users: true,
+          },
+        },
+      },
+    })
+    if (!channel) return ctx.response.notFound({ error: 'ChannelNotFound' })
+    if (!(await inChannel(channel.id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'ChannelNotFound' })
+
+    if (channel.type !== 'VOICE') return ctx.response.badRequest({ error: 'WrongChannelType' })
+
+    const ids = Object.keys(servers)
+    if (channel.conversation) {
+      if (!channel.voiceRoom || channel.voiceRoom.users.length === 0) {
+        Ws.io.to('conversation:' + channel.conversation.id).emit('INCOMING_CALL', {
+          id: channel.conversation.id,
+          userID: ctx.user!.id,
+          channelID: channel.id,
+        })
+      }
+    }
+    const room = await db.voiceRoom.upsert({
+      where: {
+        channelID: channel.id,
+      },
+      create: {
+        serverID: ids[Math.floor(Math.random() * ids.length)],
+        channelID: channel.id,
+      },
+      update: {},
+    })
+
+    return ctx.response.ok({
+      roomID: room.id,
+      socket: servers[room.serverID].socket,
+      token: jsonwebtoken.sign({ type: 'voice', room: room.id }, Env.get('JWT_KEY'), {
+        subject: ctx.user!.id,
+        expiresIn: '30s',
+      }),
+    })
+  }
+
+  public async edit(ctx: HttpContextContract) {
+    const input = patchChannel.safeParse(ctx.request.body())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+    const id = ctx.request.param('id')
+
+    const channel = await db.channel.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        community: true,
+      },
+    })
+
+    if (!channel?.community) return ctx.response.notFound({ error: 'CommunityNotFound' })
+    if (!(await getCommunityMember(id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'CommunityNotFound' })
+
+    // TODO: More advanced permissions checks
+    if (channel.community.ownerID !== ctx.user!.id)
+      return ctx.response.unauthorized({ error: 'InsufficentPermission' })
+
+    await db.channel.update({
+      where: {
+        id,
+      },
+      data: {
+        name: input.data.name,
+      },
+    })
+
+    return ctx.response.ok(undefined)
+  }
+
+  public async delete(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+
+    const channel = await db.channel.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        community: true,
+      },
+    })
+
+    if (!channel?.community) return ctx.response.notFound({ error: 'CommunityNotFound' })
+    if (!(await getCommunityMember(id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'CommunityNotFound' })
+
+    // TODO: More advanced permissions checks
+    if (channel.community.ownerID !== ctx.user!.id)
+      return ctx.response.unauthorized({ error: 'InsufficentPermission' })
+
+    if (channel.type === 'TEXT') {
+      await db.message.deleteMany({
+        where: {
+          channelID: id,
+        },
+      })
+    } else if (channel.type === 'VOICE') {
+      await db.voiceRoom.deleteMany({
+        where: {
+          channelID: id,
+        },
+      })
+    }
+
+    await db.channel.delete({
+      where: {
+        id,
+      },
+    })
+
+    return ctx.response.ok(undefined)
   }
 }

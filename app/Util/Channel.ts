@@ -12,7 +12,6 @@ export const inChannel = async (channel: string, user: string) => {
       community: true,
     },
   })
-
   if (!c) return new Error("Can't be in a channel that doesn't exist :/")
 
   if (c.conversation) {

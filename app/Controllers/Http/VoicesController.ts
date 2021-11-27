@@ -28,14 +28,16 @@ export default class VoicesController {
       },
       data: {
         users: {
-          connect: {
-            id: userID,
-          },
+          connect: [
+            {
+              id: userID,
+            },
+          ],
         },
       },
     })
 
-    Ws.io.to('channel:' + room.channelID).emit('MEMBER_VOICE_JOIN', {
+    Ws.io.to('voiceChannel:' + room.channelID).emit('MEMBER_VOICE_JOIN', {
       id: room.channelID,
       userID: userID,
       roomID: room.id,
@@ -56,14 +58,16 @@ export default class VoicesController {
       },
       data: {
         users: {
-          delete: {
-            id: userID,
-          },
+          disconnect: [
+            {
+              id: userID,
+            },
+          ],
         },
       },
     })
 
-    Ws.io.to('channel:' + room.channelID).emit('MEMBER_VOICE_LEAVE', {
+    Ws.io.to('voiceChannel:' + room.channelID).emit('MEMBER_VOICE_LEAVE', {
       id: room.channelID,
       userID: userID,
       roomID: room.id,

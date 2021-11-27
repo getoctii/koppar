@@ -1,7 +1,10 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { getCommunityMember } from 'App/Util/Community'
+import { hasPermissions } from 'App/Util/Group'
 import { createChannel } from 'App/Validators/CreateChannelValidator'
 import { createCommunity } from 'App/Validators/CreateCommunityValidator'
+import { createGroup } from 'App/Validators/CreateGroupValidator'
+import { swapChannels } from 'App/Validators/SwapChannelsValidator'
 import { db } from 'Config/db'
 
 export default class CommunitiesController {
@@ -88,10 +91,8 @@ export default class CommunitiesController {
     if (!(await getCommunityMember(id, ctx.user!.id)))
       return ctx.response.notFound({ error: 'CommunityNotFound' })
 
-    // TODO: More advanced permissions checks
-    if (community.ownerID !== ctx.user!.id)
+    if (!(await hasPermissions(id, ctx.user!.id, ['MANAGE_CHANNELS'])))
       return ctx.response.unauthorized({ error: 'InsufficentPermission' })
-
     const channel = await db.channel.create({
       data: {
         type: input.data.type ?? 'TEXT',
@@ -101,5 +102,73 @@ export default class CommunitiesController {
     })
 
     return ctx.response.ok({ id: channel.id })
+  }
+
+  public async getGroups(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+
+    const community = await db.community.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        groups: true,
+      },
+    })
+
+    if (!community) return ctx.response.notFound({ error: 'CommunityNotFound' })
+    if (!(await getCommunityMember(id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'CommunityNotFound' })
+
+    return community.groups.map((c) => c.id)
+  }
+
+  public async createGroup(ctx: HttpContextContract) {
+    const id = ctx.request.param('id')
+    const input = createGroup.safeParse(ctx.request.body())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+    const community = await db.community.findUnique({
+      where: {
+        id,
+      },
+    })
+
+    if (!community) return ctx.response.notFound({ error: 'CommunityNotFound' })
+    if (!(await getCommunityMember(id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'CommunityNotFound' })
+
+    if (!(await hasPermissions(id, ctx.user!.id, ['MANAGE_GROUPS'])))
+      return ctx.response.unauthorized({ error: 'InsufficentPermission' })
+    const group = await db.group.create({
+      data: {
+        community: {
+          connect: {
+            id,
+          },
+        },
+        name: input.data.name,
+        permissions: input.data.permissions,
+      },
+    })
+
+    return ctx.response.ok({ id: group.id })
+  }
+
+  public async swapChannels(ctx: HttpContextContract) {
+    const input = swapChannels.safeParse(ctx.request.body())
+    if (!input.success) return ctx.response.badRequest({ error: input.error })
+    const id = ctx.request.param('id')
+    const community = await db.community.findUnique({
+      where: {
+        id,
+      },
+    })
+
+    if (!community) return ctx.response.notFound({ error: 'CommunityNotFound' })
+    if (!(await getCommunityMember(id, ctx.user!.id)))
+      return ctx.response.notFound({ error: 'CommunityNotFound' })
+
+    if (!(await hasPermissions(id, ctx.user!.id, ['MANAGE_CHANNELS'])))
+      return ctx.response.unauthorized({ error: 'InsufficentPermission' })
   }
 }

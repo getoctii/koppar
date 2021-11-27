@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken'
 import Ws from 'App/Services/Ws'
 import Env from '@ioc:Adonis/Core/Env'
 import { db } from 'Config/db'
-import { User } from '@prisma/client'
 
 Ws.boot()
 
@@ -15,7 +14,11 @@ const getRooms = async (id: string) => {
     include: {
       conversationMembers: {
         include: {
-          conversation: true,
+          conversation: {
+            include: {
+              channels: true,
+            },
+          },
         },
       },
     },
@@ -25,8 +28,9 @@ const getRooms = async (id: string) => {
     'user:' + id,
     ...user!.conversationMembers.flatMap((member) => [
       'conversation:' + member.conversationID,
-      'channel:' + member.conversation.channelID,
-      'channel/messages:' + member.conversation.channelID,
+      'channel:' + member.conversation.channels.find((c) => c.type === 'TEXT')?.id,
+      'voiceChannel:' + member.conversation.channels.find((c) => c.type === 'VOICE')?.id,
+      'channel/messages:' + member.conversation.channels.find((c) => c.type === 'TEXT')?.id,
     ]),
   ]
 }

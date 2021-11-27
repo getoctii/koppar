@@ -77,9 +77,9 @@ model User {
   ownedCommunities      Community[]
   read                  Read[]
 
-  @@unique([username, discriminator])
   voiceRoom   VoiceRoom? @relation(fields: [voiceRoomID], references: [id])
   voiceRoomID String?
+  @@unique([username, discriminator])
 }
 
 enum ConversationMemberPermission {
@@ -104,15 +104,12 @@ enum ConversationType {
 }
 
 model Conversation {
-  id             String               @id @default(uuid())
-  name           String?
-  icon           String?
-  type           ConversationType
-  channelID      String               @unique
-  channel        Channel              @relation(fields: [channelID], references: [id])
-  voiceChannelID String?
-  voiceChannel   Channel?              @relation("VoiceChannel", fields: [voiceChannelID], references: [id])
-  members        ConversationMember[]
+  id      String               @id @default(uuid())
+  name    String?
+  icon    String?
+  type    ConversationType
+  members ConversationMember[]
+  channels Channel[]
 }
 
 model CommunityMember {
@@ -133,18 +130,19 @@ enum CommunityFlags {
 }
 
 model Community {
-  id          String            @id @default(uuid())
-  name        String
-  icon        String?
-  banner      String?
-  description String?
-  flags       CommunityFlags[]
-  channels    Channel[]
-  groups      Group[]
-  invites     Invite[]
-  members     CommunityMember[]
-  owner       User              @relation(fields: [ownerID], references: [id])
-  ownerID     String
+  id              String             @id @default(uuid())
+  name            String
+  icon            String?
+  banner          String?
+  description     String?
+  flags           CommunityFlags[]
+  channels        Channel[]
+  groups          Group[]
+  invites         Invite[]
+  members         CommunityMember[]
+  owner           User               @relation(fields: [ownerID], references: [id])
+  ownerID         String
+  basePermissions GroupPermissions[]
 }
 
 model Invite {
@@ -183,6 +181,7 @@ model Group {
   id          String             @id @default(uuid())
   name        String
   color       String?
+  position    Int?
   permissions GroupPermissions[]
   members     GroupMember[]
   communityID String
@@ -228,22 +227,23 @@ model ChannelOverrides {
 }
 
 model Channel {
-  id           String               @id @default(uuid())
-  type         ChannelType
-  name         String?
-  messages     Message[]
-  conversation Conversation?
-  communityID  String?
-  community    Community?           @relation(fields: [communityID], references: [id])
-  parentID     String?
-  parent       Channel?             @relation("ChannelChildren", fields: [parentID], references: [id])
-  overrides    ChannelOverrides[]
-  baseAllow    ChannelPermissions[]
-  baseDeny     ChannelPermissions[]
-  read         Read[]
-  children     Channel[]            @relation("ChannelChildren")
-  voiceRoom    VoiceRoom?
-  conversationVoice Conversation[]       @relation("VoiceChannel")
+  id             String               @id @default(uuid())
+  type           ChannelType
+  name           String?
+  messages       Message[]
+  conversationID String?
+  conversation   Conversation?        @relation(fields: [conversationID], references: [id])
+  communityID    String?
+  community      Community?           @relation(fields: [communityID], references: [id])
+  position       Int?
+  parentID       String?
+  parent         Channel?             @relation("ChannelChildren", fields: [parentID], references: [id])
+  overrides      ChannelOverrides[]
+  baseAllow      ChannelPermissions[]
+  baseDeny       ChannelPermissions[]
+  read           Read[]
+  children       Channel[]            @relation("ChannelChildren")
+  voiceRoom      VoiceRoom?
 }
 
 model Message {

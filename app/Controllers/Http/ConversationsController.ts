@@ -90,16 +90,21 @@ export default class ConversationsController {
     const conversation = await db.conversation.create({
       data: {
         type: input.data.type,
-        channel: {
-          create: {
-            type: 'TEXT',
+        channels: {
+          createMany: {
+            data: [
+              {
+                type: 'TEXT',
+              },
+              {
+                type: 'VOICE',
+              },
+            ],
           },
         },
-        voiceChannel: {
-          create: {
-            type: 'VOICE',
-          },
-        },
+      },
+      include: {
+        channels: true,
       },
     })
 
@@ -121,8 +126,9 @@ export default class ConversationsController {
     ;(await Ws.io.in('user:' + ctx.user!.id).fetchSockets()).forEach((socket) =>
       socket.join([
         'conversation:' + conversation.id,
-        'channel:' + conversation.channelID,
-        'channel/messages:' + conversation.channelID,
+        'channel:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
+        'voiceChannel:' + conversation.channels.find((c) => c.type === 'VOICE')?.id,
+        'channel/messages:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
       ])
     )
 
@@ -149,8 +155,9 @@ export default class ConversationsController {
       ;(await Ws.io.in('user:' + input.data.recipient).fetchSockets()).forEach((socket) =>
         socket.join([
           'conversation:' + conversation.id,
-          'channel:' + conversation.channelID,
-          'channel/messages:' + conversation.channelID,
+          'channel:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
+          'voiceChannel:' + conversation.channels.find((c) => c.type === 'VOICE')?.id,
+          'channel/messages:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
         ])
       )
       Ws.io.to('user:' + input.data.recipient).emit('CONVERSATION_CREATE', {
@@ -170,8 +177,9 @@ export default class ConversationsController {
           ;(await Ws.io.in('user:' + recipient).fetchSockets()).forEach((socket) =>
             socket.join([
               'conversation:' + conversation.id,
-              'channel:' + conversation.channelID,
-              'channel/messages:' + conversation.channelID,
+              'channel:' + conversation.channels.find((c) => c.type === 'TEXT'),
+              'voiceChannel:' + conversation.channels.find((c) => c.type === 'VOICE')?.id,
+              'channel/messages:' + conversation.channels.find((c) => c.type === 'TEXT'),
             ])
           )
         })
@@ -196,6 +204,7 @@ export default class ConversationsController {
       },
       include: {
         members: true,
+        channels: true,
       },
     })
 
@@ -207,7 +216,8 @@ export default class ConversationsController {
       id: conversation.id,
       name: conversation.name,
       type: conversation.type,
-      channelID: conversation.channelID,
+      channelID: conversation.channels.find((c) => c.type === 'TEXT')?.id,
+      voiceChannelID: conversation.channels.find((c) => c.type === 'VOICE')?.id,
     })
   }
 
@@ -283,6 +293,9 @@ export default class ConversationsController {
     const conversation = await db.conversation.findUnique({
       where: {
         id,
+      },
+      include: {
+        channels: true,
       },
     })
 
@@ -365,8 +378,9 @@ export default class ConversationsController {
         ;(await Ws.io.in('user:' + recipient.id).fetchSockets()).forEach((socket) =>
           [
             'conversation:' + conversation.id,
-            'channel:' + conversation.channelID,
-            'channel/messages:' + conversation.channelID,
+            'channel:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
+            'voiceChannel:' + conversation.channels.find((c) => c.type === 'VOICE')?.id,
+            'channel/messages:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
           ].forEach((room) => socket.leave(room))
         )
 
@@ -385,6 +399,9 @@ export default class ConversationsController {
     const conversation = await db.conversation.findUnique({
       where: {
         id,
+      },
+      include: {
+        channels: true,
       },
     })
 
@@ -443,8 +460,9 @@ export default class ConversationsController {
     ;(await Ws.io.in('user:' + ctx.user!.id).fetchSockets()).forEach((socket) =>
       [
         'conversation:' + conversation.id,
-        'channel:' + conversation.channelID,
-        'channel/messages:' + conversation.channelID,
+        'channel:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
+        'voiceChannel:' + conversation.channels.find((c) => c.type === 'VOICE')?.id,
+        'channel/messages:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
       ].forEach((room) => socket.leave(room))
     )
 
@@ -462,6 +480,9 @@ export default class ConversationsController {
     const conversation = await db.conversation.findUnique({
       where: {
         id,
+      },
+      include: {
+        channels: true,
       },
     })
 
@@ -481,8 +502,9 @@ export default class ConversationsController {
     ;(await Ws.io.in('user:' + ctx.user!.id).fetchSockets()).forEach((socket) =>
       [
         'conversation:' + conversation.id,
-        'channel:' + conversation.channelID,
-        'channel/messages:' + conversation.channelID,
+        'channel:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
+        'voiceChannel:' + conversation.channels.find((c) => c.type === 'VOICE')?.id,
+        'channel/messages:' + conversation.channels.find((c) => c.type === 'TEXT')?.id,
       ].forEach((room) => socket.leave(room))
     )
 
