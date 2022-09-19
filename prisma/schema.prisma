@@ -1,0 +1,276 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserState {
+  OFFLINE
+  IDLE
+  DND
+  ONLINE
+}
+
+enum UserBadges {
+  STAFF
+}
+
+enum RelationshipType {
+  FRIEND
+  INCOMING
+  OUTGOING
+  BLOCKED
+}
+
+model Relationship {
+  id          String           @id @default(uuid())
+  type        RelationshipType
+  userID      String
+  user        User             @relation("OutgoingRelationship", fields: [userID], references: [id])
+  recipientID String
+  recipient   User             @relation("IncomingRelationship", fields: [recipientID], references: [id])
+
+  @@unique([userID, recipientID])
+}
+
+model Keychain {
+  id                String @id @default(uuid())
+  encryptedKeychain Json
+  publicKeychain    Json
+  salt              Int[]
+  userID            String @unique
+  user              User   @relation(fields: [userID], references: [id])
+}
+
+enum UserFlags {
+  DEVELOPER
+  DISABLED
+}
+
+model User {
+  id                    String               @id @default(uuid())
+  username              String
+  discriminator         Int
+  avatar                String?
+  email                 String               @unique
+  status                String?
+  state                 UserState            @default(ONLINE)
+  badges                UserBadges[]
+  flags                 UserFlags[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @default(now()) @updatedAt
+  outgoingRelationships Relationship[]       @relation("OutgoingRelationship")
+  incomingRelationships Relationship[]       @relation("IncomingRelationship")
+  communityMembers      CommunityMember[]
+  conversationMembers   ConversationMember[]
+  authoredInvites       Invite[]
+  keychain              Keychain?
+  // lastPing DateTime
+  messages              Message[]
+  totpCode              String?
+  ownedCommunities      Community[]
+  read                  Read[]
+
+  voiceRoom   VoiceRoom? @relation(fields: [voiceRoomID], references: [id])
+  voiceRoomID String?
+  @@unique([username, discriminator])
+}
+
+enum ConversationMemberPermission {
+  MEMBER
+  ADMINISTRATOR
+  OWNER
+}
+
+model ConversationMember {
+  conversationID String
+  conversation   Conversation                 @relation(fields: [conversationID], references: [id])
+  userID         String
+  user           User                         @relation(fields: [userID], references: [id])
+  permission     ConversationMemberPermission
+
+  @@id([userID, conversationID])
+}
+
+enum ConversationType {
+  DM
+  GROUP
+}
+
+model Conversation {
+  id      String               @id @default(uuid())
+  name    String?
+  icon    String?
+  type    ConversationType
+  members ConversationMember[]
+  channels Channel[]
+}
+
+model CommunityMember {
+  userID      String
+  user        User          @relation(fields: [userID], references: [id])
+  communityID String
+  community   Community     @relation(fields: [communityID], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+  members     GroupMember[]
+
+  @@id([communityID, userID])
+}
+
+enum CommunityFlags {
+  OFFICAL
+  DEVELOPER
+}
+
+model Community {
+  id              String             @id @default(uuid())
+  name            String
+  icon            String?
+  banner          String?
+  description     String?
+  flags           CommunityFlags[]
+  channels        Channel[]
+  groups          Group[]
+  invites         Invite[]
+  members         CommunityMember[]
+  owner           User               @relation(fields: [ownerID], references: [id])
+  ownerID         String
+  basePermissions GroupPermissions[]
+}
+
+model Invite {
+  id          String    @id
+  code        String    @unique
+  communityID String
+  community   Community @relation(fields: [communityID], references: [id])
+  authorID    String
+  author      User      @relation(fields: [authorID], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  uses        Int       @default(0)
+}
+
+enum GroupPermissions {
+  READ_MESSAGES
+  SEND_MESSAGES
+  EMBED_LINKS
+  MENTION_MEMBERS
+  MENTION_GROUPS
+  MENTION_EVERYONE
+  CREATE_INVITES
+  KICK_MEMBERS
+  BAN_MEMBERS
+  MANAGE_INVITES
+  MANAGE_MESSAGES
+  MANAGE_GROUPS
+  MANAGE_CHANNELS
+  MANAGE_COMMUNITY
+  MANAGE_PRODUCTS
+  ADMINISTRATOR
+  OWNER
+}
+
+model Group {
+  id          String             @id @default(uuid())
+  name        String
+  color       String?
+  position    Int?
+  permissions GroupPermissions[]
+  members     GroupMember[]
+  communityID String
+  community   Community          @relation(fields: [communityID], references: [id])
+  overrides   ChannelOverrides[]
+}
+
+model GroupMember {
+  groupID           String
+  group             Group           @relation(fields: [groupID], references: [id])
+  member            CommunityMember @relation(fields: [memberCommunityID, memberUserID], references: [communityID, userID])
+  memberCommunityID String
+  memberUserID      String
+
+  @@id([groupID, memberCommunityID, memberUserID])
+}
+
+enum ChannelType {
+  TEXT
+  VOICE
+  CATEGORY
+}
+
+enum ChannelPermissions {
+  READ_MESSAGES
+  SEND_MESSAGES
+  EMBED_LINKS
+  MENTION_MEMBERS
+  MENTION_GROUPS
+  MENTION_EVERYONE
+  MANAGE_CHANNEL
+}
+
+model ChannelOverrides {
+  channelID String
+  channel   Channel              @relation(fields: [channelID], references: [id])
+  groupID   String
+  group     Group                @relation(fields: [groupID], references: [id])
+  allow     ChannelPermissions[]
+  deny      ChannelPermissions[]
+
+  @@id([channelID, groupID])
+}
+
+model Channel {
+  id             String               @id @default(uuid())
+  type           ChannelType
+  name           String?
+  messages       Message[]
+  conversationID String?
+  conversation   Conversation?        @relation(fields: [conversationID], references: [id])
+  communityID    String?
+  community      Community?           @relation(fields: [communityID], references: [id])
+  position       Int?
+  parentID       String?
+  parent         Channel?             @relation("ChannelChildren", fields: [parentID], references: [id])
+  overrides      ChannelOverrides[]
+  baseAllow      ChannelPermissions[]
+  baseDeny       ChannelPermissions[]
+  read           Read[]
+  children       Channel[]            @relation("ChannelChildren")
+  voiceRoom      VoiceRoom?
+}
+
+model Message {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  payload   Json
+  channel   Channel   @relation(fields: [channelID], references: [id])
+  channelID String
+  author    User      @relation(fields: [authorID], references: [id])
+  authorID  String
+}
+
+model Read {
+  userID            String
+  user              User    @relation(fields: [userID], references: [id])
+  channelID         String
+  channel           Channel @relation(fields: [channelID], references: [id])
+  lastReadMessageID String
+
+  @@id([channelID, userID])
+}
+
+model VoiceRoom {
+  id        String  @id @default(uuid())
+  users     User[]
+  channelID String  @unique
+  channel   Channel @relation(fields: [channelID], references: [id])
+  serverID  String
+}

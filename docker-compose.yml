@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data/pgdata
+    environment:
+      POSTGRES_USER: octii
+      POSTGRES_PASSWORD: octii
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+volumes:
+  pgdata:
